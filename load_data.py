@@ -14,10 +14,9 @@ from better_profanity import profanity
 # Load environment variables from .env file
 load_dotenv()
 
-# Configure logging
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Configure profanity filter
 profanity.load_censor_words()
 
 class RateLimit:
@@ -35,15 +34,12 @@ class RateLimit:
             self.requests_today = 0
             self.day_start = current_time
 
-        # Check daily limit
-        if self.requests_today >= 50:  # 100 batches per day limit
+        if self.requests_today >= 50:  
             return False
 
-        # Reset minute counter if it's been more than a minute
         if self.last_request_time and (current_time - self.last_request_time) >= timedelta(minutes=1):
             self.requests_this_minute = 0
 
-        # Check rate limit (15 RPM)
         if self.requests_this_minute >= 15:
             return False
 
@@ -61,9 +57,9 @@ class CommentAnalyzer:
         self.data = None
         self.analyzed_data = None
         self.rate_limiter = RateLimit()
-        self.batch_size = 20  # Process 20 comments per batch
-        self.max_batches = max_batches  # Maximum number of batches to process
-        self.use_prefilter = use_prefilter  # Whether to use profanity prefilter
+        self.batch_size = 20  
+        self.max_batches = max_batches  
+        self.use_prefilter = use_prefilter  
         
         if api_key:
             genai.configure(api_key=api_key)
@@ -72,11 +68,9 @@ class CommentAnalyzer:
             raise ValueError("Gemini API key not provided")
 
     def pre_filter_comments(self, comments: List[str]) -> List[str]:
-        """Pre-filter comments using better-profanity to identify potentially offensive content."""
         return [comment for comment in comments if profanity.contains_profanity(comment)]
 
     def load_data(self) -> None:
-        """Load and process the comment data from CSV file."""
         try:
             self.data = pd.read_csv(self.data_path)
             self.data.rename(columns={"tweet": "comment_text"}, inplace=True)
@@ -98,7 +92,6 @@ class CommentAnalyzer:
             raise
 
     def build_batch_prompt(self, comments: List[str]) -> str:
-        """Build a prompt for analyzing a batch of comments."""
         comments_text = "\n".join([f"{i+1}. '{comment}'" for i, comment in enumerate(comments)])
         return f"""Analyze the following comments for offensive content. For each comment, classify it into one of these categories: hate speech, toxicity, profanity, harassment.
 
@@ -115,7 +108,6 @@ Return the results as a JSON array of objects, one for each comment in the same 
 """
 
     def process_batch(self, comments: List[str]) -> List[Dict]:
-        """Process a batch of comments and return the results."""
         if self.use_prefilter:
             # Pre-filter comments
             potentially_offensive = self.pre_filter_comments(comments)
@@ -138,13 +130,12 @@ Return the results as a JSON array of objects, one for each comment in the same 
         while retry_count < max_retries:
             try:
                 while not self.rate_limiter.can_make_request():
-                    time.sleep(2)  # Wait before checking again
+                    time.sleep(2)  
 
                 prompt = self.build_batch_prompt(potentially_offensive)
                 response = self.model.generate_content(prompt)
                 self.rate_limiter.record_request()
 
-                # Clean and parse the response
                 cleaned_text = response.text.strip()
                 if cleaned_text.startswith("```json"):
                     cleaned_text = cleaned_text[7:]
@@ -153,17 +144,14 @@ Return the results as a JSON array of objects, one for each comment in the same 
 
                 results = json.loads(cleaned_text)
                 
-                # Create final results array matching original comments
                 final_results = []
                 result_idx = 0
                 
                 for comment in comments:
                     if comment in potentially_offensive:
-                        # Use Gemini result for potentially offensive comments
                         final_results.append(results[result_idx])
                         result_idx += 1
                     else:
-                        # Use default result for non-offensive comments
                         final_results.append({
                             "is_offensive": False,
                             "offense_type": "none",
@@ -185,9 +173,8 @@ Return the results as a JSON array of objects, one for each comment in the same 
                         logging.info("User chose to stop retrying. Saving partial results...")
                         break
                     logging.info(f"Retrying request (attempt {retry_count + 1}/{max_retries})...")
-                    time.sleep(5)  # Wait before retrying
+                    time.sleep(5) 
 
-        # If we get here, all retries failed or user chose to stop
         logging.error(f"Failed to process batch after {retry_count} attempts. Last error: {last_error}")
         return [{
             "is_offensive": False,
@@ -197,7 +184,6 @@ Return the results as a JSON array of objects, one for each comment in the same 
         } for _ in range(len(comments))]
 
     def analyze_all_comments(self) -> None:
-        """Analyze all comments in the dataset using batch processing."""
         if self.data is None:
             raise ValueError("Data not loaded. Call load_data() first.")
 
@@ -220,7 +206,6 @@ Return the results as a JSON array of objects, one for each comment in the same 
             try:
                 batch_results = self.process_batch(batch_comments)
                 
-                # Add metadata to results
                 for i, result in enumerate(batch_results):
                     result['comment_id'] = start_idx + i
                     result['username'] = f"user_{start_idx + i}"
@@ -228,7 +213,6 @@ Return the results as a JSON array of objects, one for each comment in the same 
                 
                 results.extend(batch_results)
                 
-                # Save all results fetched so far
                 self.analyzed_data = pd.DataFrame(results)
                 self.save_results("partial_results.csv")
                 logging.info(f"Saved {len(results)} results so far")
@@ -241,7 +225,6 @@ Return the results as a JSON array of objects, one for each comment in the same 
                 logging.info(f"Saved {len(results)} results before error")
                 continue
             
-            # Add delay between batches to respect rate limits
             if batch_num < num_batches - 1:
                 logging.info("Waiting 5 seconds before next batch...")
                 time.sleep(5)
@@ -250,7 +233,6 @@ Return the results as a JSON array of objects, one for each comment in the same 
         logging.info(f"Analysis completed. Processed {len(results)} comments in {num_batches} batches.")
 
     def generate_report(self) -> None:
-        """Generate and print a summary report."""
         if self.analyzed_data is None:
             raise ValueError("No analyzed data available. Run analyze_all_comments() first.")
 
@@ -265,18 +247,8 @@ Return the results as a JSON array of objects, one for each comment in the same 
         offense_types = offensive_comments['offense_type'].value_counts()
         for offense_type, count in offense_types.items():
             print(f"- {offense_type}: {count}")
-        
-        # print("\nTop 5 Most Severe Offensive Comments:")
-        # top_offensive = offensive_comments.sort_values('severity', ascending=False).head(5)
-        # for _, row in top_offensive.iterrows():
-        #     print(f"\nUsername: {row['username']}")
-        #     print(f"Comment: {row['original_comment']}")
-        #     print(f"Offense Type: {row['offense_type']}")
-        #     print(f"Severity: {row['severity']:.2f}")
-        #     print(f"Explanation: {row['explanation']}")
 
     def save_results(self, output_path: str) -> None:
-        """Save the analyzed results to a CSV file."""
         if self.analyzed_data is None:
             raise ValueError("No analyzed data available. Run analyze_all_comments() first.")
 
@@ -284,11 +256,9 @@ Return the results as a JSON array of objects, one for each comment in the same 
         logging.info(f"Results saved to {output_path}")
 
     def display_top_severe_comments(self, n: int = 10, offense_type: str = None) -> None:
-        """Display the top N most severe comments, optionally filtered by offense type."""
         if self.analyzed_data is None:
             raise ValueError("No analyzed data available. Run analyze_all_comments() first.")
 
-        # Filter by offense type if specified
         if offense_type:
             filtered_data = self.analyzed_data[self.analyzed_data['offense_type'] == offense_type]
             if len(filtered_data) == 0:
@@ -311,7 +281,6 @@ Return the results as a JSON array of objects, one for each comment in the same 
             print("-" * 80)
 
     def filter_by_offense_type(self, offense_type: str) -> None:
-        """Filter and display comments by offense type."""
         if self.analyzed_data is None:
             raise ValueError("No analyzed data available. Run analyze_all_comments() first.")
 

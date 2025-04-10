@@ -11,23 +11,19 @@ class HateSpeechVisualizer:
         self.set_style()
         
     def set_style(self):
-        """Set the style for all plots"""
         sns.set_theme()
         sns.set_palette("husl")
         plt.rcParams['figure.figsize'] = [12, 8]
         plt.rcParams['font.size'] = 12
         
     def compare_prefilter_results(self, n_samples: int = None):
-        """Compare results between pre-filtered and non-filtered analysis using aligned comment_id."""
         if self.original_data is None:
             raise ValueError("Original data path not provided for comparison")
 
-        # Get minimum number of records between both files
         min_records = min(len(self.data), len(self.original_data))
         if n_samples is None or n_samples > min_records:
             n_samples = min_records
 
-        # Merge on comment_id to avoid misalignment
         merged = pd.merge(
             self.data[['comment_id', 'is_offensive', 'offense_type', 'severity']],
             self.original_data[['comment_id', 'is_offensive', 'offense_type', 'severity']],
@@ -49,10 +45,8 @@ class HateSpeechVisualizer:
         fn = confusion_matrix.loc[False, True] if (False in confusion_matrix.index and True in confusion_matrix.columns) else 0
         tn = confusion_matrix.loc[False, False] if (False in confusion_matrix.index and False in confusion_matrix.columns) else 0
 
-        # Start plotting
         fig, axes = plt.subplots(2, 2, figsize=(16, 12))
 
-        # Plot 1: Confusion Matrix
         sns.heatmap(confusion_matrix, annot=True, fmt='d', cmap='YlOrRd', ax=axes[0, 0])
         axes[0, 0].set_title('Confusion Matrix\n(Pre-filtered vs Original)')
 
@@ -76,7 +70,6 @@ class HateSpeechVisualizer:
         axes[1, 0].set_ylabel('Count')
         axes[1, 0].tick_params(axis='x', rotation=45)
 
-        # Plot 4: Severity Box Plot
         severity_df = pd.DataFrame({
             'Pre-filtered': merged[merged['is_offensive_filtered']]['severity_filtered'],
             'Original': merged[merged['is_offensive_original']]['severity_original']
@@ -115,7 +108,6 @@ class HateSpeechVisualizer:
 
 
     def plot_offensive_distribution(self):
-        """Plot pie chart showing distribution of offensive vs non-offensive comments"""
         plt.figure(figsize=(10, 8))
         offensive_counts = self.data['is_offensive'].value_counts()
         plt.pie(offensive_counts, 
@@ -129,14 +121,12 @@ class HateSpeechVisualizer:
         plt.close()
         
     def plot_offense_types(self, offense_type: str = None):
-        """Plot and display comments by offense type."""
         if offense_type:
             filtered_comments = self.data[self.data['offense_type'] == offense_type]
             if len(filtered_comments) == 0:
                 print(f"No comments found with offense type: {offense_type}")
                 return
 
-            # Create the plot
             plt.figure(figsize=(12, 6))
             sns.histplot(data=filtered_comments, x='severity', bins=20)
             plt.title(f'Severity Distribution for {offense_type}')
@@ -146,7 +136,6 @@ class HateSpeechVisualizer:
             plt.savefig(f'severity_distribution_{offense_type.replace(" ", "_")}.png')
             plt.close()
 
-            # Print the comments
             print(f"\nComments with offense type '{offense_type}':")
             print(f"Total count: {len(filtered_comments)}")
             print("-" * 80)
@@ -158,7 +147,6 @@ class HateSpeechVisualizer:
                 print(f"Explanation: {row['explanation']}")
                 print("-" * 80)
         else:
-            # Plot distribution of all offense types
             plt.figure(figsize=(12, 6))
             offense_counts = self.data['offense_type'].value_counts()
             sns.barplot(x=offense_counts.index, y=offense_counts.values)
@@ -171,7 +159,6 @@ class HateSpeechVisualizer:
             plt.close()
         
     def plot_severity_distribution(self):
-        """Plot histogram of severity scores"""
         plt.figure(figsize=(12, 6))
         sns.histplot(data=self.data[self.data['is_offensive']], 
                     x='severity', 
@@ -185,7 +172,6 @@ class HateSpeechVisualizer:
         plt.close()
         
     def plot_offense_type_severity(self):
-        """Plot box plot showing severity distribution by offense type"""
         plt.figure(figsize=(12, 6))
         sns.boxplot(data=self.data[self.data['is_offensive']],
                    x='offense_type',
@@ -199,7 +185,6 @@ class HateSpeechVisualizer:
         plt.close()
         
     def plot_top_offensive_comments(self, n: int = 10, offense_type: str = None):
-        """Plot and display the top N most severe comments, optionally filtered by offense type."""
         if offense_type:
             filtered_data = self.data[self.data['offense_type'] == offense_type]
             if len(filtered_data) == 0:
@@ -224,7 +209,6 @@ class HateSpeechVisualizer:
         plt.savefig('top_offensive_comments.png')
         plt.close()
 
-        # Print the comments
         print("-" * 80)
         for idx, row in top_comments.iterrows():
             print(f"\nComment ID: {row['comment_id']}")
@@ -236,7 +220,6 @@ class HateSpeechVisualizer:
             print("-" * 80)
 
     def plot_offense_type_heatmap(self):
-        """Plot heatmap showing correlation between offense types and severity"""
         plt.figure(figsize=(10, 8))
         offense_severity = self.data[self.data['is_offensive']].pivot_table(
             values='severity',
@@ -253,7 +236,6 @@ class HateSpeechVisualizer:
         plt.close()
         
     def generate_all_visualizations(self):
-        """Generate all visualizations"""
         print("Generating visualizations...")
         
         # Create standard visualizations
@@ -275,7 +257,6 @@ class HateSpeechVisualizer:
         self.plot_offense_type_heatmap()
         print("✓ Generated offense type heatmap")
         
-        # Generate comparison if original data is available
         if self.original_data is not None:
             self.compare_prefilter_results()
             print("✓ Generated pre-filter comparison analysis")
@@ -283,7 +264,6 @@ class HateSpeechVisualizer:
         print("\nAll visualizations have been saved as PNG files in the current directory.")
 
 if __name__ == "__main__":
-    # Create visualizations with comparison
     visualizer = HateSpeechVisualizer(
         "analyzed_comments.csv",  # Pre-filtered results
         "analyzed_comments_original.csv"  # Original results

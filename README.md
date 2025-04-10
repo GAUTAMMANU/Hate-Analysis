@@ -35,11 +35,11 @@ A comprehensive tool for analyzing and visualizing hate speech in comments using
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/hate-speech-analysis.git
-cd hate-speech-analysis
+git clone https://github.com/yourusername/hate-analysis.git
+cd hate-analysis
 ```
 
-2. Create and activate a virtual environment (recommended):
+2. Create and activate a virtual environment:
 ```bash
 python -m venv venv
 # On Windows
@@ -55,9 +55,8 @@ pip install -r requirements.txt
 
 4. Set up environment variables:
 ```bash
-# Copy the example environment file
 cp .env.example .env
-# Edit .env with your actual API key
+# Edit .env with your API key
 ```
 
 ## Usage
@@ -78,14 +77,17 @@ python cli.py analyzed_comments.csv --top-severe 15
 # Show top severe comments for specific type
 python cli.py analyzed_comments.csv --top-severe 15 --filter-type "hate speech"
 
-# Compare with another file
-python cli.py analyzed_comments.csv --compare original.csv --compare-samples 500
+- `analyzed_comments.csv`: Main analysis results
+- `partial_results.csv`: Intermediate results
+- Various visualization PNG files
 
 # Filter by offense type
 python cli.py analyzed_comments.csv --filter-type "toxicity"
 ```
 
-### Command Line Arguments
+- Never commit `.env` file or API keys
+- Use environment variables for sensitive data
+- Be mindful of API rate limits and costs
 
 - `input_file`: Path to the input CSV file (required)
 - `--max-batches`: Maximum number of batches to process (default: 50)

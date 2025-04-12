@@ -18,7 +18,7 @@ def validate_file_path(file_path):
 def main():
     parser = argparse.ArgumentParser(description='Hate Speech Analysis Tool')
     
-    parser.add_argument('input_file', type=str, help='Path to the input CSV file')
+    parser.add_argument('input_file', type=str, nargs='?', help='Path to the input CSV file')
     
     parser.add_argument('--max-batches', type=int, default=50,
                        help='Maximum number of batches to process (default: 50)')
@@ -28,8 +28,6 @@ def main():
                        help='Generate visualization charts')
     parser.add_argument('--compare', type=str, metavar='ORIGINAL_FILE',
                        help='Compare results with original analysis file')
-    parser.add_argument('--compare-samples', type=int,
-                       help='Number of samples to use for comparison (default: minimum of both files)')
     parser.add_argument('--top-severe', type=int, default=10,
                        help='Number of top severe comments to display (default: 10)')
     parser.add_argument('--filter-type', type=str, choices=['hate speech', 'toxicity', 'profanity', 'harassment'],
@@ -43,9 +41,75 @@ def main():
     try:
         setup_logging()
 
+        # Check if only charts are needed
+        if args.charts and not args.input_file:
+            user_input = input("You have not specified an input file. Do you only need charts? (yes/no): ").lower()
+            if user_input != 'yes':
+                logging.error("Please provide an input file for analysis")
+                return 1
+            
+            # Validate output file exists
+            output_file = validate_file_path(args.output)
+            
+            # Initialize analyzer with output file for text output
+            analyzer = CommentAnalyzer(data_path=output_file)
+            analyzer.load_data()  # Load the analyzed data
+            
+            # Initialize visualizer with the output file
+            visualizer = HateSpeechVisualizer(output_file)
+            
+            # Generate charts
+            logging.info("Generating visualizations...")
+            visualizer.generate_all_visualizations()
+
+            if args.compare:
+                compare_file = validate_file_path(args.compare)
+                visualizer = HateSpeechVisualizer(output_file, compare_file)
+                visualizer.compare_prefilter_results()
+
+            # Handle filter-type and top-severe options
+            if args.top_severe > 0:
+                if args.filter_type:
+                    logging.info(f"\nTop {args.top_severe} most severe comments for offense type: {args.filter_type}")
+                    analyzer.display_top_severe_comments(args.top_severe, args.filter_type)
+                    visualizer.plot_top_offensive_comments(args.top_severe, args.filter_type)
+                else:
+                    logging.info(f"\nTop {args.top_severe} most severe comments:")
+                    analyzer.display_top_severe_comments(args.top_severe)
+                    visualizer.plot_top_offensive_comments(args.top_severe)
+
+            if args.filter_type and args.top_severe <= 0:
+                logging.info(f"\nFiltered results for offense type: {args.filter_type}")
+                analyzer.filter_by_offense_type(args.filter_type)
+                visualizer.plot_offense_types(args.filter_type)
+            
+            return 0
+
+        # Normal flow with input file
         input_file = validate_file_path(args.input_file)
 
-        visualizer = HateSpeechVisualizer(input_file)
+        # Get API key from environment or argument
+        api_key = args.api_key or os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            raise ValueError("Google API key not provided. Set it via --api-key or GOOGLE_API_KEY environment variable")
+
+        # Initialize and run the analyzer
+        analyzer = CommentAnalyzer(
+            data_path=input_file,
+            api_key=api_key,
+            max_batches=args.max_batches,
+            use_prefilter=not args.no_prefilter
+        )
+
+        logging.info("Loading and analyzing data...")
+        analyzer.load_data()
+        analyzer.analyze_all_comments()
+        analyzer.generate_report()
+        analyzer.save_results(args.output)
+        logging.info(f"Analysis complete. Results saved to {args.output}")
+
+        # Initialize visualizer with the analyzed data
+        visualizer = HateSpeechVisualizer(args.output)
 
         if args.charts:
             logging.info("Generating visualizations...")
@@ -53,28 +117,27 @@ def main():
 
             if args.compare:
                 compare_file = validate_file_path(args.compare)
-                visualizer = HateSpeechVisualizer(input_file, compare_file)
+                visualizer = HateSpeechVisualizer(args.output, compare_file)
+                visualizer.compare_prefilter_results()
 
-                n_samples = args.compare_samples
-                if n_samples is not None:
-                    logging.info(f"Using {n_samples} samples for comparison")
-                else:
-                    logging.info("Using minimum number of records from both files for comparison")
-                
-                visualizer.compare_prefilter_results(n_samples)
-        
-
+        # Handle filter-type and top-severe options
         if args.top_severe > 0:
             if args.filter_type:
                 logging.info(f"\nTop {args.top_severe} most severe comments for offense type: {args.filter_type}")
-                visualizer.plot_top_offensive_comments(args.top_severe, args.filter_type)
+                analyzer.display_top_severe_comments(args.top_severe, args.filter_type)
+                if args.charts:
+                    visualizer.plot_top_offensive_comments(args.top_severe, args.filter_type)
             else:
                 logging.info(f"\nTop {args.top_severe} most severe comments:")
-                visualizer.plot_top_offensive_comments(args.top_severe)
+                analyzer.display_top_severe_comments(args.top_severe)
+                if args.charts:
+                    visualizer.plot_top_offensive_comments(args.top_severe)
 
         if args.filter_type and args.top_severe <= 0:
             logging.info(f"\nFiltered results for offense type: {args.filter_type}")
-            visualizer.plot_offense_types(args.filter_type)
+            analyzer.filter_by_offense_type(args.filter_type)
+            if args.charts:
+                visualizer.plot_offense_types(args.filter_type)
             
     except Exception as e:
         logging.error(f"Error: {str(e)}")

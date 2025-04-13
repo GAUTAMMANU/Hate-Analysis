@@ -66,36 +66,44 @@ cp .env.example .env
 python cli.py input.csv
 ```
 
-### Visualization Options
+### Advanced Options
 ```bash
-# Generate all visualizations
-python cli.py analyzed_comments.csv --charts
+# Generate visualizations only from existing analysis
+python cli.py --charts
+
+# Generate all visualizations with new analysis
+python cli.py input.csv --charts
 
 # Show top severe comments
-python cli.py analyzed_comments.csv --top-severe 15
+python cli.py analyzed_comments.csv --top-severe 10
 
 # Show top severe comments for specific type
-python cli.py analyzed_comments.csv --top-severe 15 --filter-type "hate speech"
-
-- `analyzed_comments.csv`: Main analysis results
-- `partial_results.csv`: Intermediate results
-- Various visualization PNG files
+python cli.py analyzed_comments.csv --top-severe 10 --filter-type "hate speech"
 
 # Filter by offense type
 python cli.py analyzed_comments.csv --filter-type "toxicity"
+
+# Compare with another analysis file
+python cli.py analyzed_comments.csv --compare original_analysis.csv
+
+# Disable profanity prefiltering
+python cli.py input.csv --no-prefilter
+
+# Specify custom output file
+python cli.py input.csv --output custom_results.csv
+
+# Specify API key directly
+python cli.py input.csv --api-key YOUR_API_KEY
 ```
 
-- Never commit `.env` file or API keys
-- Use environment variables for sensitive data
-- Be mindful of API rate limits and costs
+### Command Line Arguments
 
-- `input_file`: Path to the input CSV file (required)
+- `input_file`: Path to the input CSV file (optional when only viewing charts)
 - `--max-batches`: Maximum number of batches to process (default: 50)
-- `--no-prefilter`: Disable profanity prefiltering
+- `--no-prefilter`: Disable profanity prefiltering before API calls
 - `--charts`: Generate visualization charts
 - `--compare`: Compare results with another analysis file
-- `--compare-samples`: Number of samples to use for comparison
-- `--top-severe`: Number of top severe comments to display
+- `--top-severe`: Number of top severe comments to display (default: 10)
 - `--filter-type`: Filter results by offense type
 - `--output`: Output file path (default: analyzed_comments.csv)
 - `--api-key`: Google API key (optional, can use environment variable)
@@ -115,6 +123,36 @@ python cli.py analyzed_comments.csv --filter-type "toxicity"
 - `severity_distribution.png`: Severity score distribution
 - `top_offensive_comments.png`: Top severe comments visualization
 - `prefilter_comparison.png`: Comparison results (if --compare used)
+
+## API Request Management & Fail-Safe Mechanisms
+
+### API Request Management
+1. **Rate Limiting**
+   - Automatic handling of API rate limits
+   - Exponential backoff for retries
+   - Configurable batch sizes
+
+2. **Request Optimization**
+   - Pre-filtering using local profanity detection
+   - Batch processing to minimize API calls
+   - Caching of analyzed results
+
+### Fail-Safe Mechanisms
+1. **Data Persistence**
+   - Automatic saving of partial results after each batch
+   - Recovery from previous analysis state
+   - Checkpoint system for long-running analyses
+
+2. **Error Recovery**
+   - Automatic retry for failed API requests (3 attempts)
+   - Interactive retry options for persistent failures
+   - Graceful degradation with partial results
+   - Detailed error logging and reporting
+
+3. **Resource Management**
+   - Memory-efficient batch processing
+   - Disk space monitoring for output files
+   - Cleanup of temporary files
 
 ## Error Handling
 

@@ -3,9 +3,12 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 from datetime import datetime
+import os
 
 class HateSpeechVisualizer:
     def __init__(self, data_path: str, original_data_path: str = None):
+        self.data_path = data_path
+        self.original_data_path = original_data_path
         self.data = pd.read_csv(data_path)
         self.original_data = pd.read_csv(original_data_path) if original_data_path else None
         self.set_style()
@@ -16,27 +19,31 @@ class HateSpeechVisualizer:
         plt.rcParams['figure.figsize'] = [12, 8]
         plt.rcParams['font.size'] = 12
         
-    def compare_prefilter_results(self, n_samples: int = None):
+    def compare_results(self, n_samples: int = None):
         if self.original_data is None:
-            raise ValueError("Original data path not provided for comparison")
+            raise ValueError("Second file path not provided for comparison")
 
         min_records = min(len(self.data), len(self.original_data))
         if n_samples is None or n_samples > min_records:
             n_samples = min_records
 
+        # Get file names for labels
+        file1_label = os.path.basename(self.data_path).replace('.csv', '')
+        file2_label = os.path.basename(self.original_data_path).replace('.csv', '')
+
         merged = pd.merge(
             self.data[['comment_id', 'is_offensive', 'offense_type', 'severity']],
             self.original_data[['comment_id', 'is_offensive', 'offense_type', 'severity']],
             on='comment_id',
-            suffixes=('_filtered', '_original')
+            suffixes=('_1', '_2')
         ).head(n_samples)
 
         # Confusion matrix
         confusion_matrix = pd.crosstab(
-            merged['is_offensive_filtered'],
-            merged['is_offensive_original'],
-            rownames=['Pre-filtered'],
-            colnames=['Original']
+            merged['is_offensive_1'],
+            merged['is_offensive_2'],
+            rownames=[file1_label],
+            colnames=[file2_label]
         )
 
         # Metrics
@@ -48,12 +55,12 @@ class HateSpeechVisualizer:
         fig, axes = plt.subplots(2, 2, figsize=(16, 12))
 
         sns.heatmap(confusion_matrix, annot=True, fmt='d', cmap='YlOrRd', ax=axes[0, 0])
-        axes[0, 0].set_title('Confusion Matrix\n(Pre-filtered vs Original)')
+        axes[0, 0].set_title(f'Confusion Matrix\n({file1_label} vs {file2_label})')
 
         # Plot 2: Distribution Comparison
         comparison_counts = pd.DataFrame({
-            'Pre-filtered': merged['is_offensive_filtered'].value_counts(),
-            'Original': merged['is_offensive_original'].value_counts()
+            file1_label: merged['is_offensive_1'].value_counts(),
+            file2_label: merged['is_offensive_2'].value_counts()
         })
         comparison_counts.plot(kind='bar', ax=axes[0, 1])
         axes[0, 1].set_title('Offensive Content Distribution')
@@ -62,8 +69,8 @@ class HateSpeechVisualizer:
 
         # Plot 3: Offense Type Comparison
         offense_type_counts = pd.DataFrame({
-            'Pre-filtered': merged[merged['is_offensive_filtered']]['offense_type_filtered'].value_counts(),
-            'Original': merged[merged['is_offensive_original']]['offense_type_original'].value_counts()
+            file1_label: merged[merged['is_offensive_1']]['offense_type_1'].value_counts(),
+            file2_label: merged[merged['is_offensive_2']]['offense_type_2'].value_counts()
         })
         offense_type_counts.plot(kind='bar', ax=axes[1, 0])
         axes[1, 0].set_title('Offense Type Distribution')
@@ -71,22 +78,22 @@ class HateSpeechVisualizer:
         axes[1, 0].tick_params(axis='x', rotation=45)
 
         severity_df = pd.DataFrame({
-            'Pre-filtered': merged[merged['is_offensive_filtered']]['severity_filtered'],
-            'Original': merged[merged['is_offensive_original']]['severity_original']
+            file1_label: merged[merged['is_offensive_1']]['severity_1'],
+            file2_label: merged[merged['is_offensive_2']]['severity_2']
         })
         sns.boxplot(data=severity_df, ax=axes[1, 1])
         axes[1, 1].set_title('Severity Score Comparison')
         axes[1, 1].set_ylabel('Severity')
 
         plt.tight_layout()
-        plt.savefig('prefilter_comparison.png')
+        plt.savefig('file_comparison.png')
         plt.close()
 
         # Print metrics
-        print("\n=== Pre-filter Comparison Results ===")
+        print(f"\n=== Comparison Results ({file1_label} vs {file2_label}) ===")
         print(f"Sample Size: {n_samples}")
-        print(f"Total Records in Filtered Data: {len(self.data)}")
-        print(f"Total Records in Original Data: {len(self.original_data)}")
+        print(f"Total Records in {file1_label}: {len(self.data)}")
+        print(f"Total Records in {file2_label}: {len(self.original_data)}")
         print("\nConfusion Matrix:")
         print(confusion_matrix)
         print("\nMetrics:")
@@ -105,7 +112,7 @@ class HateSpeechVisualizer:
         print(f"Precision: {precision:.2%}")
         print(f"Recall: {recall:.2%}")
         print(f"F1 Score: {f1:.2%}")
-
+        print("✓ Generated file comparison analysis")
 
     def plot_offensive_distribution(self):
         plt.figure(figsize=(10, 8))
@@ -258,8 +265,8 @@ class HateSpeechVisualizer:
         print("✓ Generated offense type heatmap")
         
         if self.original_data is not None:
-            self.compare_prefilter_results()
-            print("✓ Generated pre-filter comparison analysis")
+            self.compare_results()
+            print("✓ Generated file comparison analysis")
         
         print("\nAll visualizations have been saved as PNG files in the current directory.")
 

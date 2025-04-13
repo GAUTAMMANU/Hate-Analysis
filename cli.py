@@ -26,9 +26,9 @@ def main():
                        help='Disable profanity prefiltering before API calls')
     parser.add_argument('--charts', action='store_true',
                        help='Generate visualization charts')
-    parser.add_argument('--compare', type=str, metavar='ORIGINAL_FILE',
-                       help='Compare results with original analysis file')
-    parser.add_argument('--top-severe', type=int, default=10,
+    parser.add_argument('--compare', type=str, metavar='FILE2',
+                       help='Compare results with another analysis file (output file will be used as FILE1)')
+    parser.add_argument('--top-severe', type=int,
                        help='Number of top severe comments to display (default: 10)')
     parser.add_argument('--filter-type', type=str, choices=['hate speech', 'toxicity', 'profanity', 'harassment'],
                        help='Filter results by offense type')
@@ -51,9 +51,6 @@ def main():
             # Validate output file exists
             output_file = validate_file_path(args.output)
             
-            # Initialize analyzer with output file for text output
-            analyzer = CommentAnalyzer(data_path=output_file)
-            analyzer.load_data()  # Load the analyzed data
             
             # Initialize visualizer with the output file
             visualizer = HateSpeechVisualizer(output_file)
@@ -65,22 +62,19 @@ def main():
             if args.compare:
                 compare_file = validate_file_path(args.compare)
                 visualizer = HateSpeechVisualizer(output_file, compare_file)
-                visualizer.compare_prefilter_results()
+                visualizer.compare_results()
 
             # Handle filter-type and top-severe options
-            if args.top_severe > 0:
+            if args.top_severe:
                 if args.filter_type:
                     logging.info(f"\nTop {args.top_severe} most severe comments for offense type: {args.filter_type}")
-                    analyzer.display_top_severe_comments(args.top_severe, args.filter_type)
                     visualizer.plot_top_offensive_comments(args.top_severe, args.filter_type)
                 else:
                     logging.info(f"\nTop {args.top_severe} most severe comments:")
-                    analyzer.display_top_severe_comments(args.top_severe)
                     visualizer.plot_top_offensive_comments(args.top_severe)
 
             if args.filter_type and args.top_severe <= 0:
-                logging.info(f"\nFiltered results for offense type: {args.filter_type}")
-                analyzer.filter_by_offense_type(args.filter_type)
+                logging.info(f"\nFiltered results for offense type : {args.filter_type} plotted")
                 visualizer.plot_offense_types(args.filter_type)
             
             return 0
@@ -118,20 +112,16 @@ def main():
             if args.compare:
                 compare_file = validate_file_path(args.compare)
                 visualizer = HateSpeechVisualizer(args.output, compare_file)
-                visualizer.compare_prefilter_results()
+                visualizer.compare_results()
 
         # Handle filter-type and top-severe options
-        if args.top_severe > 0:
+        if args.top_severe!=10:
             if args.filter_type:
                 logging.info(f"\nTop {args.top_severe} most severe comments for offense type: {args.filter_type}")
-                analyzer.display_top_severe_comments(args.top_severe, args.filter_type)
-                if args.charts:
-                    visualizer.plot_top_offensive_comments(args.top_severe, args.filter_type)
+                visualizer.plot_top_offensive_comments(args.top_severe, args.filter_type)
             else:
                 logging.info(f"\nTop {args.top_severe} most severe comments:")
-                analyzer.display_top_severe_comments(args.top_severe)
-                if args.charts:
-                    visualizer.plot_top_offensive_comments(args.top_severe)
+                visualizer.plot_top_offensive_comments(args.top_severe)
 
         if args.filter_type and args.top_severe <= 0:
             logging.info(f"\nFiltered results for offense type: {args.filter_type}")

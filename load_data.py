@@ -255,30 +255,30 @@ Return the results as a JSON array of objects, one for each comment in the same 
         self.analyzed_data.to_csv(output_path, index=False)
         logging.info(f"Results saved to {output_path}")
 
-    def display_top_severe_comments(self, n: int = 10, offense_type: str = None) -> None:
-        if self.analyzed_data is None:
-            raise ValueError("No analyzed data available. Run analyze_all_comments() first.")
+    # def display_top_severe_comments(self, n: int = 10, offense_type: str = None) -> None:
+    #     if self.analyzed_data is None:
+    #         raise ValueError("No analyzed data available. Run analyze_all_comments() first.")
 
-        if offense_type:
-            filtered_data = self.analyzed_data[self.analyzed_data['offense_type'] == offense_type]
-            if len(filtered_data) == 0:
-                print(f"No comments found with offense type: {offense_type}")
-                return
-            top_comments = filtered_data.nlargest(n, 'severity')
-            print(f"\nTop {n} Most Severe Comments (Offense Type: {offense_type}):")
-        else:
-            top_comments = self.analyzed_data.nlargest(n, 'severity')
-            print(f"\nTop {n} Most Severe Comments:")
+    #     if offense_type:
+    #         filtered_data = self.analyzed_data[self.analyzed_data['offense_type'] == offense_type]
+    #         if len(filtered_data) == 0:
+    #             print(f"No comments found with offense type: {offense_type}")
+    #             return
+    #         top_comments = filtered_data.nlargest(n, 'severity')
+    #         print(f"\nTop {n} Most Severe Comments (Offense Type: {offense_type}):")
+    #     else:
+    #         top_comments = self.analyzed_data.nlargest(n, 'severity')
+    #         print(f"\nTop {n} Most Severe Comments:")
 
-        print("-" * 80)
-        for idx, row in top_comments.iterrows():
-            print(f"\nComment ID: {row['comment_id']}")
-            print(f"Username: {row['username']}")
-            print(f"Comment: {row['original_comment']}")
-            print(f"Offense Type: {row['offense_type']}")
-            print(f"Severity: {row['severity']:.2f}")
-            print(f"Explanation: {row['explanation']}")
-            print("-" * 80)
+    #     print("-" * 80)
+    #     for idx, row in top_comments.iterrows():
+    #         print(f"\nComment ID: {row['comment_id']}")
+    #         print(f"Username: {row['username']}")
+    #         print(f"Comment: {row['original_comment']}")
+    #         print(f"Offense Type: {row['offense_type']}")
+    #         print(f"Severity: {row['severity']:.2f}")
+    #         print(f"Explanation: {row['explanation']}")
+    #         print("-" * 80)
 
     def filter_by_offense_type(self, offense_type: str) -> None:
         if self.analyzed_data is None:

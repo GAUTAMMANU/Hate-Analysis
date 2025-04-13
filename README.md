@@ -22,7 +22,8 @@ A comprehensive tool for analyzing and visualizing hate speech in comments using
   - Display top severe comments
   - Compare results between files
   - Generate detailed reports
-
+## Video demonstration: 
+  - https://drive.google.com/file/d/1Y20vWAJFvPNWuhGrpYBRPWyVn-L2clc3/view
 ## Security Notes
 
 ⚠️ **Important Security Considerations**:
